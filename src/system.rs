@@ -1,19 +1,8 @@
+use crate::types::{SystemConfig, SystemPallet};
 use num::traits::{CheckedAdd, One, Zero};
 use std::collections::BTreeMap;
 
-pub trait Config {
-	type AccountId: Ord + Clone;
-	type BlockNumber: Zero + One + CheckedAdd + Copy;
-	type Nonce: Zero + One + Copy;
-}
-
-#[derive(Debug)]
-pub struct Pallet<T: Config> {
-	block_number: T::BlockNumber,
-	nonce: BTreeMap<T::AccountId, T::Nonce>,
-}
-
-impl<T: Config> Pallet<T> {
+impl<T: SystemConfig> SystemPallet<T> {
 	pub fn new() -> Self {
 		Self { block_number: T::BlockNumber::zero(), nonce: BTreeMap::new() }
 	}
@@ -39,7 +28,7 @@ impl<T: Config> Pallet<T> {
 #[cfg(test)]
 mod test {
 	struct TestConfig;
-	impl super::Config for TestConfig {
+	impl super::SystemConfig for TestConfig {
 		type AccountId = String;
 		type BlockNumber = u32;
 		type Nonce = u32;
@@ -47,7 +36,7 @@ mod test {
 
 	#[test]
 	fn init_system() {
-		let mut system = super::Pallet::<TestConfig>::new();
+		let mut system = super::SystemPallet::<TestConfig>::new();
 		system.inc_block_number();
 		system.inc_nonce(&"alice".to_string());
 

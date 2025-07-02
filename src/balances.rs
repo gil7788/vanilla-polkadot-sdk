@@ -1,16 +1,24 @@
+use crate::{
+	support::DispatchResult,
+	types::{
+		BalancesConfig, BalancesPallet, Runtime, SystemConfig,
+		types::{AccountId, Balance, BlockNumber, Nonce},
+	},
+};
 use num::traits::{CheckedAdd, CheckedSub, Zero};
 use std::collections::BTreeMap;
 
-pub trait Config: crate::system::Config {
-	type Balance: Zero + CheckedSub + CheckedAdd + Copy;
+impl SystemConfig for Runtime {
+	type AccountId = AccountId;
+	type BlockNumber = BlockNumber;
+	type Nonce = Nonce;
 }
 
-#[derive(Debug)]
-pub struct Pallet<T: Config> {
-	balances: BTreeMap<T::AccountId, T::Balance>,
+impl BalancesConfig for Runtime {
+	type Balance = Balance;
 }
 
-impl<T: Config> Pallet<T> {
+impl<T: BalancesConfig> BalancesPallet<T> {
 	pub fn new() -> Self {
 		Self { balances: BTreeMap::new() }
 	}
@@ -28,7 +36,7 @@ impl<T: Config> Pallet<T> {
 		from: &T::AccountId,
 		to: &T::AccountId,
 		amount: T::Balance,
-	) -> Result<(), &'static str> {
+	) -> DispatchResult {
 		let caller_balance = self.balance(&from);
 		let to_balance = self.balance(&to);
 
@@ -44,20 +52,22 @@ impl<T: Config> Pallet<T> {
 
 #[cfg(test)]
 mod tests {
+	use crate::types::SystemConfig;
+
 	struct TestConfig;
-	impl crate::system::Config for TestConfig {
+	impl SystemConfig for TestConfig {
 		type AccountId = String;
 		type BlockNumber = u32;
 		type Nonce = u32;
 	}
 
-	impl super::Config for TestConfig {
+	impl super::BalancesConfig for TestConfig {
 		type Balance = u128;
 	}
 
 	#[test]
 	fn init_balances() {
-		let mut balances = super::Pallet::<TestConfig>::new();
+		let mut balances = super::BalancesPallet::<TestConfig>::new();
 
 		assert_eq!(balances.balance(&"alice".to_string()), 0);
 		balances.set_balance(&"alice".to_string(), 100);
@@ -67,7 +77,7 @@ mod tests {
 
 	#[test]
 	fn transfer_funds() {
-		let mut balances = super::Pallet::<TestConfig>::new();
+		let mut balances = super::BalancesPallet::<TestConfig>::new();
 
 		balances.set_balance(&"alice".to_string(), 100);
 		let result = balances.transfer(&"alice".to_string(), &"bob".to_string(), 50);
@@ -78,7 +88,7 @@ mod tests {
 
 	#[test]
 	fn fail_to_transfer_non_existent_funds() {
-		let mut balances = super::Pallet::<TestConfig>::new();
+		let mut balances = super::BalancesPallet::<TestConfig>::new();
 
 		balances.set_balance(&"alice".to_string(), 100);
 

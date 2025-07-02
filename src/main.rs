@@ -1,28 +1,56 @@
 mod balances;
+mod support;
 mod system;
 mod types;
 
-use crate::types::types::{AccountId, Balance, BlockNumber, Nonce};
-
-#[derive(Debug)]
-pub struct Runtime {
-	system: system::Pallet<Self>,
-	balances: balances::Pallet<Self>,
-}
-
-impl system::Config for Runtime {
-	type AccountId = AccountId;
-	type BlockNumber = BlockNumber;
-	type Nonce = Nonce;
-}
-
-impl balances::Config for Runtime {
-	type Balance = Balance;
-}
+use crate::{
+	support::{Dispatch, DispatchResult, Extrinsic},
+	types::{BalancesPallet, Runtime, RuntimeCall, SystemConfig, SystemPallet, types::Block},
+};
 
 impl Runtime {
 	fn new() -> Self {
-		Self { system: system::Pallet::new(), balances: balances::Pallet::new() }
+		Self { system: SystemPallet::new(), balances: BalancesPallet::new() }
+	}
+
+	fn execute_block(&mut self, block: Block) -> DispatchResult {
+		self.system.inc_block_number();
+		if block.header.block_number != self.system.block_number() {
+			return Err("Block number mismatch");
+		}
+
+		for (i, Extrinsic { caller, call }) in block.extrinsics.into_iter().enumerate() {
+			self.system.inc_nonce(&caller);
+			let _result = self.dispatch(caller, call).map_err(|e| {
+				eprintln!(
+					"Extrinsic Error\n\tBlock Number: {}\n\tExtrinsic Number: {}\n\tError: {}",
+					block.header.block_number, i, e
+				)
+			});
+		}
+		Ok(())
+	}
+}
+
+impl crate::support::Dispatch for Runtime {
+	type Caller = <Runtime as SystemConfig>::AccountId;
+	type Call = RuntimeCall;
+	// Dispatch a call on behalf of a caller. Increments the caller's nonce.
+	//
+	// Dispatch allows us to identify which underlying module call we want to execute.
+	// Note that we extract the `caller` from the extrinsic, and use that information
+	// to determine who we are executing the call on behalf of.
+	fn dispatch(
+		&mut self,
+		caller: Self::Caller,
+		runtime_call: Self::Call,
+	) -> support::DispatchResult {
+		match runtime_call {
+			RuntimeCall::BalancesTransfer { to, amount } => {
+				self.balances.transfer(&caller, &to, amount)?;
+			},
+		}
+		Ok(())
 	}
 }
 
