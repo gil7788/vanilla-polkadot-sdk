@@ -1,5 +1,7 @@
 use num::traits::{CheckedAdd, CheckedSub, One, Zero};
 use std::collections::BTreeMap;
+use crate::balances;
+use crate::proof_of_existence;
 
 pub mod types {
 	pub type AccountId = String;
@@ -9,6 +11,7 @@ pub mod types {
 	pub type Extrinsic = crate::support::Extrinsic<AccountId, super::RuntimeCall>;
 	pub type Header = crate::support::Header<BlockNumber>;
 	pub type Block = crate::support::Block<Header, Extrinsic>;
+	pub type Content = String;
 }
 
 // Main
@@ -16,10 +19,17 @@ pub mod types {
 pub struct Runtime {
 	pub system: SystemPallet<Self>,
 	pub balances: BalancesPallet<Self>,
+	pub proof_of_existence: proof_of_existence::Pallet<Self>,
 }
 
 pub enum RuntimeCall {
-	BalancesTransfer { to: types::AccountId, amount: types::Balance },
+	Balances(balances::Call<Runtime>),
+	// BalancesTransfer { to: types::AccountId, amount: types::Balance },
+	ProofOfExistence(proof_of_existence::Call<Runtime>),
+}
+
+impl proof_of_existence::Config for Runtime {
+	type Content = types::Content;
 }
 
 // Balances

@@ -52,92 +52,83 @@ impl<T: BalancesConfig> BalancesPallet<T> {
 
 #[cfg_attr(not(test), allow(dead_code))]
 pub enum Call<T: BalancesConfig> {
-	Transfer {
-		to: T::AccountId,
-		amount: T::Balance
-	}
+	Transfer { to: T::AccountId, amount: T::Balance },
 }
 
 /// Implementation of the dispatch logic, mapping from `BalancesCall` to the appropriate underlying
 /// function we want to execute.
 impl<T: BalancesConfig> crate::support::Dispatch for BalancesPallet<T> {
-    type Caller = T::AccountId;
-    type Call = Call<T>;
+	type Caller = T::AccountId;
+	type Call = Call<T>;
 
-    fn dispatch(
-        &mut self,
-        caller: Self::Caller,
-        call: Self::Call,
-    ) -> crate::support::DispatchResult {        
+	fn dispatch(
+		&mut self,
+		caller: Self::Caller,
+		call: Self::Call,
+	) -> crate::support::DispatchResult {
 		match call {
 			Call::Transfer { to, amount } => {
 				self.transfer(&caller, &to, amount)?;
-			}
+			},
 		}
-        Ok(())
-    }
+		Ok(())
+	}
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::types::SystemConfig;
 	use crate::support::Dispatch;
+	use crate::types::SystemConfig;
 
-    struct TestConfig;
-    impl SystemConfig for TestConfig {
-        type AccountId = String;
-        type BlockNumber = u32;
-        type Nonce = u32;
-    }
+	struct TestConfig;
+	impl SystemConfig for TestConfig {
+		type AccountId = String;
+		type BlockNumber = u32;
+		type Nonce = u32;
+	}
 
-    impl super::BalancesConfig for TestConfig {
-        type Balance = u128;
-    }
+	impl super::BalancesConfig for TestConfig {
+		type Balance = u128;
+	}
 
-    #[test]
-    fn init_balances() {
-        let mut balances = super::BalancesPallet::<TestConfig>::new();
+	#[test]
+	fn init_balances() {
+		let mut balances = super::BalancesPallet::<TestConfig>::new();
 
-        assert_eq!(balances.balance(&"alice".to_string()), 0);
-        balances.set_balance(&"alice".to_string(), 100);
-        assert_eq!(balances.balance(&"alice".to_string()), 100);
-        assert_eq!(balances.balance(&"bob".to_string()), 0);
-    }
+		assert_eq!(balances.balance(&"alice".to_string()), 0);
+		balances.set_balance(&"alice".to_string(), 100);
+		assert_eq!(balances.balance(&"alice".to_string()), 100);
+		assert_eq!(balances.balance(&"bob".to_string()), 0);
+	}
 
-    #[test]
-    fn transfer_funds() {
-        let mut balances = super::BalancesPallet::<TestConfig>::new();
+	#[test]
+	fn transfer_funds() {
+		let mut balances = super::BalancesPallet::<TestConfig>::new();
 
-        balances.set_balance(&"alice".to_string(), 100);
+		balances.set_balance(&"alice".to_string(), 100);
 
-        // replaced direct call with dispatch
-        let call = super::Call::<TestConfig>::Transfer {
-            to: "bob".to_string(),
-            amount: 50,
-        };
-        let result = balances.dispatch("alice".to_string(), call);
+		// replaced direct call with dispatch
+		let call = super::Call::<TestConfig>::Transfer { to: "bob".to_string(), amount: 50 };
+		let result = balances.dispatch("alice".to_string(), call);
 
-        assert_eq!(result.unwrap(), ());
-        assert_eq!(balances.balance(&"alice".to_string()), 50);
-        assert_eq!(balances.balance(&"bob".to_string()), 50);
-    }
+		assert_eq!(result.unwrap(), ());
+		assert_eq!(balances.balance(&"alice".to_string()), 50);
+		assert_eq!(balances.balance(&"bob".to_string()), 50);
+	}
 
-    #[test]
-    fn fail_to_transfer_non_existent_funds() {
-        let mut balances = super::BalancesPallet::<TestConfig>::new();
+	#[test]
+	fn fail_to_transfer_non_existent_funds() {
+		let mut balances = super::BalancesPallet::<TestConfig>::new();
 
-        balances.set_balance(&"alice".to_string(), 100);
+		balances.set_balance(&"alice".to_string(), 100);
 
-        // replaced direct call with dispatch
-        let call = super::Call::<TestConfig>::Transfer {
-            to: "bob".to_string(),
-            amount: 101,
-        };
-        let result = balances.dispatch("alice".to_string(), call);
+		// replaced direct call with dispatch
+		let call = super::Call::<TestConfig>::Transfer { to: "bob".to_string(), amount: 101 };
+		let result = balances.dispatch("alice".to_string(), call);
 
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "Not enough funds.");
-        assert_eq!(balances.balance(&"alice".to_string()), 100);
-        assert_eq!(balances.balance(&"bob".to_string()), 0);
-    }
+		assert!(result.is_err());
+		assert_eq!(result.unwrap_err(), "Not enough funds.");
+		assert_eq!(balances.balance(&"alice".to_string()), 100);
+		assert_eq!(balances.balance(&"bob".to_string()), 0);
+	}
 }
